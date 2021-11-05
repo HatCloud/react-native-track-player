@@ -1,5 +1,6 @@
 package com.guichaguri.trackplayer.service;
 
+import android.app.ActivityManager;
 import android.app.Notification;
 import android.content.Context;
 import android.content.Intent;
@@ -16,6 +17,9 @@ import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.jstasks.HeadlessJsTaskConfig;
 import com.guichaguri.trackplayer.service.Utils;
+
+import java.util.List;
+
 import javax.annotation.Nullable;
 
 /**
@@ -107,11 +111,11 @@ public class MusicService extends HeadlessJsTaskService {
         if(intent != null && Intent.ACTION_MEDIA_BUTTON.equals(intent.getAction())) {
             // Check if the app is on background, then starts a foreground service and then ends it right after
             onStartForeground();
-            
+
             if(manager != null) {
                 MediaButtonReceiver.handleIntent(manager.getMetadata().getSession(), intent);
             }
-            
+
             return START_NOT_STICKY;
         }
 
@@ -128,14 +132,16 @@ public class MusicService extends HeadlessJsTaskService {
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        super.onTaskRemoved(rootIntent);
-
-        if (manager == null || manager.shouldStopWithApp()) {
-            if (manager != null) {
-                manager.getPlayback().stop();
-            }
-            destroy();
+        if (manager !=null && manager.shouldStopWithApp()) {
             stopSelf();
+            ActivityManager activityManager = (ActivityManager) getApplicationContext().getSystemService(Context.ACTIVITY_SERVICE);
+            List<ActivityManager.RunningAppProcessInfo> list = activityManager.getRunningAppProcesses();
+            for (ActivityManager.RunningAppProcessInfo runningAppProcessInfo : list) {
+                if (runningAppProcessInfo.pid != android.os.Process.myPid()) {
+                    android.os.Process.killProcess(runningAppProcessInfo.pid);
+                }
+            }
+            System.exit(0);
         }
     }
 }
